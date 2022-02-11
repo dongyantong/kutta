@@ -1,10 +1,9 @@
-package lru
+package kutta
 
 import (
 	"container/list"
 	"math/rand"
 	"runtime"
-	"sync"
 	"time"
 )
 
@@ -13,7 +12,6 @@ type Cache struct {
 	dl         *list.List
 	cache      map[interface{}]*list.Element
 	WatchDog   *watchDog
-	lock       sync.RWMutex
 }
 
 type Key interface{}
@@ -42,7 +40,6 @@ func New(maxEntries int, cleanupInterval time.Duration) *Cache {
 		dl:         list.New(),
 		cache:      make(map[interface{}]*list.Element),
 		WatchDog:   dog,
-		lock:       sync.RWMutex{},
 	}
 	go dog.run(c)
 	runtime.SetFinalizer(c, stopWatchDog)
@@ -62,8 +59,6 @@ func (c *Cache) AddExWithOnEvicted(key Key, value interface{}, d time.Duration, 
 }
 
 func (c *Cache) add(key Key, value interface{}, d time.Duration, onEvicted *func(key Key, value interface{})) {
-	c.lock.Lock()
-	defer c.lock.Unlock()
 	var e int64
 	if c.cache == nil {
 		c.cache = make(map[interface{}]*list.Element)
@@ -90,8 +85,6 @@ func (c *Cache) Get(key Key) (value interface{}, ok bool) {
 	if c.cache == nil {
 		return
 	}
-	c.lock.Lock()
-	defer c.lock.Unlock()
 	if ele, hit := c.cache[key]; hit {
 		v := ele.Value.(*entry)
 		if v.Expired() {
@@ -113,8 +106,6 @@ func (c *Cache) Remove(key Key) {
 	if c.cache == nil {
 		return
 	}
-	c.lock.Lock()
-	defer c.lock.Unlock()
 	if ele, hit := c.cache[key]; hit {
 		c.removeElement(ele)
 	}
@@ -124,8 +115,6 @@ func (c *Cache) RemoveOldest() {
 	if c.cache == nil {
 		return
 	}
-	c.lock.Lock()
-	defer c.lock.Unlock()
 	ele := c.dl.Back()
 	if ele != nil {
 		c.removeElement(ele)
@@ -145,8 +134,6 @@ func (c *Cache) DeleteExpired() {
 	if c.Len() == 0 {
 		return
 	}
-	c.lock.Lock()
-	defer c.lock.Unlock()
 	now := time.Now().UnixNano()
 	rand.Seed(now)
 	count := rand.Intn(c.Len()) + 1

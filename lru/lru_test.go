@@ -1,4 +1,4 @@
-package lru
+package kutta
 
 import (
 	"fmt"
@@ -6,7 +6,7 @@ import (
 	"time"
 )
 
-func TestNew(t *testing.T) {
+func TestLru(t *testing.T) {
 	cache := New(2, time.Second*100)
 	onEvicted := func(key Key, value interface{}) {
 		fmt.Println(key, "is evicted ...")
